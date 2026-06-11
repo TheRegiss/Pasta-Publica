@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DentalCare - Painel do Paciente</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-blue: #0d6efd;
+            --dark-blue: #0b5ed7;
+            --bg-light: #f8f9fa;
+            --text-dark: #212529;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+            --success: #198754;
+            --success-bg: #d1e7dd;
+            --card-bg: #ffffff;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow-md: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg-light); color: var(--text-dark); overflow: hidden; }
+
+        /* --- SIDEBAR & MOBILE OVERLAY --- */
+        .sidebar { width: 260px; background-color: var(--primary-blue); color: white; display: flex; flex-direction: column; justify-content: space-between; z-index: 1000; transition: left 0.3s ease; }
+        .sidebar-header { padding: 24px; font-size: 24px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .close-sidebar-btn { display: none; background: transparent; border: none; color: white; font-size: 24px; cursor: pointer; }
+        .nav-links { list-style: none; padding: 20px 15px; flex-grow: 1; }
+        .nav-item { margin-bottom: 8px; }
+        .nav-btn { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: transparent; border: none; color: rgba(255,255,255,0.8); font-size: 15px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: 0.2s; text-align: left; }
+        .nav-btn:hover, .nav-btn.active { background-color: white; color: var(--primary-blue); }
+        .user-profile-mini { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; }
+        .avatar { width: 40px; height: 40px; background-color: white; color: var(--primary-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; text-transform: uppercase; }
+        .mobile-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
+
+        /* --- MAIN CONTENT --- */
+        .main-wrapper { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; width: 100%; }
+        .topbar { height: 70px; background-color: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; padding: 0 30px; position: relative; z-index: 100; }
+        .mobile-menu-btn { display: none; background: transparent; border: none; font-size: 24px; color: var(--text-dark); cursor: pointer; margin-right: 15px; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; background-color: var(--success); border-radius: 50%; margin-right: 8px; }
+        .topbar-actions { display: flex; gap: 20px; align-items: center; color: var(--text-muted); }
+        .content-area { padding: 30px; overflow-y: auto; flex-grow: 1; }
+        .page-section { display: none; animation: fadeIn 0.2s ease; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- CARDS & WIDGETS --- */
+        .card { background: var(--card-bg); border-radius: 12px; padding: 24px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); margin-bottom: 24px; }
+        .welcome-card { display: flex; justify-content: space-between; align-items: center; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+        .stat-card { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0; }
+        .stat-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background-color: #e9ecef; color: var(--primary-blue); }
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .next-appt-card { background-color: var(--primary-blue); color: white; border: none; }
+        .btn-quick-schedule { background: rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: none; color: white; cursor: pointer; transition: 0.2s; }
+        .btn-quick-schedule:hover { background: rgba(255,255,255,0.3); }
+        .btn-white { background: white; color: var(--primary-blue); border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: 600; margin-top: 20px; cursor: pointer; transition: background 0.2s; }
+        .btn-white:hover { background: #f1f3f5; }
+
+        /* --- LISTAS DE TRATAMENTOS --- */
+        .treatment-item { display: flex; align-items: center; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--border-color); }
+        .treatment-item:last-child { border-bottom: none; }
+        .treatment-icon { min-width: 40px; height: 40px; border-radius: 50%; background: var(--success-bg); color: var(--success); display: flex; align-items: center; justify-content: center; }
+        .treatment-icon.pending { background: #e7f1ff; color: var(--primary-blue); }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+        .badge.success { background: var(--success-bg); color: var(--success); }
+        .badge.primary { background: #e7f1ff; color: var(--primary-blue); }
+        
+        .btn-detail-sm { background: #f8f9fa; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+        .btn-detail-sm:hover { background: #e9ecef; }
+        /* NOVO: Botão de Cancelar no Histórico */
+        .btn-cancel-sm { background: #fff; border: 1px solid #dc3545; color: #dc3545; padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 500; white-space: nowrap; margin-right: 8px; transition: 0.2s; }
+        .btn-cancel-sm:hover { background: #fce8e6; }
+
+        /* --- FORMULÁRIOS --- */
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 14px; font-weight: 500; }
+        .form-control { width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 15px; outline: none; transition: border-color 0.2s; }
+        .form-control:focus { border-color: var(--primary-blue); }
+        .form-control:disabled { background-color: #f8f9fa; cursor: not-allowed; }
+
+        /* --- LÓGICA DE AGENDAMENTO --- */
+        .booking-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .step-block { transition: all 0.3s ease; }
+        .step-locked { opacity: 0.4; pointer-events: none; filter: grayscale(100%); }
+        .step-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-dark); }
+        .form-select { width: 100%; padding: 14px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 15px; outline: none; cursor: pointer; background: #fff; }
+        .form-select:focus { border-color: var(--primary-blue); }
+        .prof-card { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
+        .prof-card:hover { border-color: var(--primary-blue); }
+        .prof-card.active { border-color: var(--primary-blue); background-color: #f0f6ff; box-shadow: 0 0 0 1px var(--primary-blue); }
+        .prof-avatar { width: 44px; height: 44px; background: var(--primary-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-weight: 600; }
+        .calendar-nav { border: none; background: transparent; cursor: pointer; font-size: 16px; color: var(--text-muted); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 8px; }
+        .calendar-day-name { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px;}
+        .calendar-day { padding: 10px 0; border-radius: 8px; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .calendar-day:hover:not(.empty):not(.today) { background: #f0f6ff; color: var(--primary-blue); }
+        .calendar-day.active { background: var(--primary-blue); color: white; font-weight: 600; }
+        .calendar-day.empty { cursor: default; }
+        .calendar-day.today { border: 1px solid var(--primary-blue); color: var(--primary-blue); font-weight: 600;}
+        .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .time-btn { padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: white; cursor: pointer; transition: 0.2s; font-size: 14px; font-weight: 500; }
+        .time-btn:hover { border-color: var(--primary-blue); color: var(--primary-blue); }
+        .time-btn.active { background: var(--primary-blue); color: white; border-color: var(--primary-blue); }
+        .btn-confirm { width: 100%; padding: 16px; background: var(--primary-blue); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 24px; transition: background 0.2s; display: none; animation: fadeIn 0.3s ease; }
+        .btn-confirm:hover { background: var(--dark-blue); }
+
+        /* --- MODAL E NOTIFICAÇÕES --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); display: none; align-items: center; justify-content: center; z-index: 2000; animation: fadeInBg 0.2s ease forwards; padding: 20px; }
+        .modal-box { background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 480px; box-shadow: var(--shadow-md); position: relative; transform: translateY(-20px); animation: slideUp 0.3s ease forwards; max-height: 90vh; overflow-y: auto;}
+        .close-modal { position: absolute; top: 20px; right: 20px; background: transparent; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); }
+        .notif-dropdown { display: none; position: absolute; top: 35px; right: 80px; width: 320px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-md); overflow: hidden; animation: fadeIn 0.2s ease; cursor: default;}
+        
+        @keyframes fadeInBg { to { opacity: 1; } }
+        @keyframes slideUp { to { transform: translateY(0); } }
+
+        /* --- RESPONSIVIDADE (MOBILE) --- */
+        @media (max-width: 992px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .booking-layout { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; left: -260px; height: 100vh; }
+            .sidebar.open { left: 0; }
+            .close-sidebar-btn { display: block; }
+            .mobile-overlay.active { display: block; }
+            .mobile-menu-btn { display: block; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .topbar { padding: 0 20px; justify-content: flex-start; }
+            .topbar-actions { margin-left: auto; }
+            .content-area { padding: 20px 15px; }
+            .treatment-item { flex-direction: column; align-items: flex-start; position: relative; }
+            .treatment-item .btn-detail-sm, .treatment-item .btn-cancel-sm { width: 100%; margin-top: 10px; text-align: center; margin-right: 0; }
+            .treatment-item > div:nth-child(3) { text-align: left !important; margin-top: 10px; width: 100%; }
+            .treatment-item .treatment-icon { position: absolute; top: 18px; right: 0; }
+            .notif-dropdown { right: 20px; width: 280px; }
+            .time-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div>
+            <div class="sidebar-header">
+                DentalCare
+                <button class="close-sidebar-btn" id="close-sidebar"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item"><button class="nav-btn active" data-target="inicio"><i class="fa-solid fa-house"></i> Início</button></li>
+                <li class="nav-item"><button class="nav-btn" data-target="agendar"><i class="fa-regular fa-calendar-plus"></i> Agendar</button></li>
+                <li class="nav-item"><button class="nav-btn" data-target="tratamentos"><i class="fa-solid fa-file-medical"></i> Meus Tratamentos</button></li>
+                <li class="nav-item"><button class="nav-btn" data-target="perfil"><i class="fa-regular fa-user"></i> Meu Perfil</button></li>
+            </ul>
+        </div>
+        
+        <div class="user-profile-mini">
+            <div class="avatar" id="sidebar-avatar">JP</div>
+            <div>
+                <div style="font-weight: 600; font-size: 14px;" id="sidebar-nome">João Pedro</div>
+                <div style="font-size: 12px; color: rgba(255,255,255,0.7);" id="sidebar-email">joao@email.com</div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-wrapper">
+        <header class="topbar">
+            <button class="mobile-menu-btn" id="open-sidebar"><i class="fa-solid fa-bars"></i></button>
+            
+            <div style="font-size: 14px; color: var(--text-muted); display: flex; align-items: center;">
+                <span class="status-dot"></span> <span class="hide-mobile">Conectado como </span> <strong>Paciente</strong>
+            </div>
+            
+            <div class="topbar-actions">
+                <div style="position: relative;" id="bell-container">
+                    <i class="fa-regular fa-bell" id="notification-bell" style="cursor: pointer; font-size: 18px; padding: 5px;"></i>
+                    <span id="notification-badge" style="display: none; position: absolute; top: 2px; right: 2px; background: #dc3545; width: 8px; height: 8px; border-radius: 50%;"></span>
+                </div>
+                <div style="cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="hide-mobile">Sair</span></div>
+            </div>
+
+            <div class="notif-dropdown" id="notification-dropdown">
+                <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); font-weight: 600; font-size: 14px; background: #f8f9fa;">Notificações</div>
+                <div id="notification-body" style="padding: 20px; font-size: 13px; color: var(--text-muted); text-align: center;">
+                    Nenhuma notificação disponível no momento.
+                </div>
+            </div>
+        </header>
+
+        <div class="content-area">
+            
+            <section id="inicio" class="page-section active">
+                <div class="card welcome-card">
+                    <div>
+                        <h2 style="margin-bottom: 8px;">Boa tarde, <span class="patient-first-name">João Pedro</span>!</h2>
+                        <p style="color: var(--text-muted);">Bem-vindo ao seu painel de acompanhamento odontológico.</p>
+                    </div>
+                    <div style="width: 48px; height: 48px; background: #e7f1ff; color: var(--primary-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;"><i class="fa-regular fa-face-smile"></i></div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="card stat-card">
+                        <div>
+                            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Consultas Realizadas</div>
+                            <h2 style="margin-bottom: 8px;" id="stat-consultas">0</h2>
+                            <div style="font-size: 12px; color: var(--text-muted);">No histórico</div>
+                        </div>
+                        <div class="stat-icon"><i class="fa-regular fa-calendar-check"></i></div>
+                    </div>
+                    <div class="card stat-card">
+                        <div>
+                            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Tratamentos Ativos</div>
+                            <h2 style="margin-bottom: 8px;" id="stat-ativos">0</h2>
+                            <div style="font-size: 12px; color: var(--text-muted);">Em andamento / Agendados</div>
+                        </div>
+                        <div class="stat-icon" style="background: #fce8e6; color: #dc3545;"><i class="fa-solid fa-file-prescription"></i></div>
+                    </div>
+                    <div class="card stat-card">
+                        <div>
+                            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Plano de Saúde</div>
+                            <h2 style="margin-bottom: 8px;">Ativo</h2>
+                            <div style="font-size: 12px; color: var(--text-muted);">Premium - Validade até 12/2026</div>
+                        </div>
+                        <div class="stat-icon" style="background: var(--success-bg); color: var(--success);"><i class="fa-solid fa-ribbon"></i></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h3 style="margin-bottom: 20px; font-size: 18px;">Tratamentos Recentes</h3>
+                        <div id="recent-treatments-list">
+                            </div>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <a href="#" id="view-all-treatments" style="color: var(--primary-blue); text-decoration: none; font-weight: 500;">Ver Todos os Tratamentos</a>
+                        </div>
+                    </div>
+
+                    <div class="card next-appt-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                            <h3 style="font-size: 18px;">Próxima Consulta</h3>
+                            <button class="btn-quick-schedule" id="btn-quick-schedule" title="Agendar nova consulta"><i class="fa-regular fa-calendar"></i></button>
+                        </div>
+                        
+                        <div id="no-appt-msg" style="margin-bottom: 20px; color: rgba(255,255,255,0.8);">
+                            Nenhuma consulta agendada no momento. Clique no calendário acima para agendar.
+                        </div>
+
+                        <div id="appt-details" style="display: none;">
+                            <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+                                <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fa-regular fa-calendar-days"></i></div>
+                                <div>
+                                    <div style="font-size: 12px; opacity: 0.8;">Data</div>
+                                    <div style="font-weight: 500;" id="next-appt-date">--</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+                                <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fa-regular fa-clock"></i></div>
+                                <div>
+                                    <div style="font-size: 12px; opacity: 0.8;">Horário</div>
+                                    <div style="font-weight: 500;" id="next-appt-time">--</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 16px; margin-bottom: 20px;" id="prof-container">
+                                <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fa-regular fa-user"></i></div>
+                                <div>
+                                    <div style="font-size: 12px; opacity: 0.8;">Profissional</div>
+                                    <div style="font-weight: 500;" id="next-appt-prof">--</div>
+                                </div>
+                            </div>
+                            <button class="btn-white" id="open-details-btn">Ver Detalhes</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="agendar" class="page-section">
+                <h2 style="margin-bottom: 8px;">Agendar Nova Consulta</h2>
+                <p style="color: var(--text-muted); margin-bottom: 24px;">Siga as etapas abaixo para marcar seu atendimento.</p>
+                
+                <div class="booking-layout">
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <div class="card step-block" id="step-1" style="margin-bottom: 0;">
+                            <div class="step-title">1. Escolha o tipo de atendimento</div>
+                            <select class="form-select" id="select-treatment">
+                                <option value="" selected disabled>Selecione uma especialidade</option>
+                                <option value="Limpeza e Prevenção">Limpeza e Prevenção</option>
+                                <option value="Clareamento Dental">Clareamento Dental</option>
+                                <option value="Avaliação Ortodôntica">Avaliação Ortodôntica</option>
+                            </select>
+                        </div>
+                        <div class="card step-block step-locked" id="step-2" style="margin-bottom: 0;">
+                            <div class="step-title">2. Escolha o profissional</div>
+                            <div id="dentist-list-container"><p style="font-size: 13px; color: var(--text-muted);">Selecione o atendimento primeiro.</p></div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <div class="card step-block step-locked" id="step-3" style="margin-bottom: 0;">
+                            <div class="step-title">3. Escolha a data</div>
+                            <div class="calendar-header"><button class="calendar-nav">&lt;</button><span>Junho 2026</span><button class="calendar-nav">&gt;</button></div>
+                            <div class="calendar-grid">
+                                <div class="calendar-day-name">Dom</div><div class="calendar-day-name">Seg</div><div class="calendar-day-name">Ter</div><div class="calendar-day-name">Qua</div><div class="calendar-day-name">Qui</div><div class="calendar-day-name">Sex</div><div class="calendar-day-name">Sáb</div>
+                                <div class="calendar-day empty"></div>
+                                <div class="calendar-day number">1</div><div class="calendar-day number">2</div><div class="calendar-day number">3</div><div class="calendar-day number">4</div><div class="calendar-day number">5</div><div class="calendar-day number">6</div>
+                                <div class="calendar-day number">7</div><div class="calendar-day number today" title="Hoje">8</div><div class="calendar-day number">9</div><div class="calendar-day number">10</div><div class="calendar-day number">11</div><div class="calendar-day number">12</div><div class="calendar-day number">13</div>
+                                <div class="calendar-day number">14</div><div class="calendar-day number">15</div><div class="calendar-day number">16</div><div class="calendar-day number">17</div><div class="calendar-day number">18</div><div class="calendar-day number">19</div><div class="calendar-day number">20</div>
+                                <div class="calendar-day number">21</div><div class="calendar-day number">22</div><div class="calendar-day number">23</div><div class="calendar-day number">24</div><div class="calendar-day number">25</div><div class="calendar-day number">26</div><div class="calendar-day number">27</div>
+                                <div class="calendar-day number">28</div><div class="calendar-day number">29</div><div class="calendar-day number">30</div>
+                                <div class="calendar-day empty"></div><div class="calendar-day empty"></div><div class="calendar-day empty"></div><div class="calendar-day empty"></div>
+                            </div>
+                        </div>
+                        <div class="card step-block step-locked" id="step-4" style="margin-bottom: 0;">
+                            <div class="step-title">4. Escolha o horário</div>
+                            <div class="time-grid" id="time-list-container">
+                                <button class="time-btn">08:00</button><button class="time-btn">09:00</button><button class="time-btn">10:00</button><button class="time-btn">11:00</button>
+                                <button class="time-btn">13:00</button><button class="time-btn">14:00</button><button class="time-btn">15:00</button><button class="time-btn">16:00</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-confirm" id="btn-confirmar">Confirmar Agendamento</button>
+            </section>
+
+            <section id="tratamentos" class="page-section">
+                <div class="card">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+                        <div style="width: 40px; height: 40px; background: #e7f1ff; color: var(--primary-blue); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                        <div><h3 style="font-size: 18px;">Seu Histórico Completo</h3><p style="font-size: 13px; color: var(--text-muted);">Procedimentos realizados e agendados</p></div>
+                    </div>
+
+                    <div id="full-history-list">
+                        </div>
+                </div>
+            </section>
+
+            <section id="perfil" class="page-section">
+                <h2 style="margin-bottom: 8px;">Meu Perfil</h2>
+                <p style="color: var(--text-muted); margin-bottom: 24px;">Gerencie suas informações pessoais e dados do convênio</p>
+                
+                <div class="card" style="max-width: 800px; margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 20px; font-size: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                        <i class="fa-regular fa-user" style="color: var(--primary-blue); margin-right: 8px;"></i> Dados Pessoais
+                    </h3>
+                    <div class="form-group"><label class="form-label">Nome Completo</label><input type="text" id="input-nome" class="form-control" placeholder="Seu nome completo"></div>
+                    <div class="form-group"><label class="form-label">CPF</label><input type="text" id="input-cpf" class="form-control" placeholder="000.000.000-00" maxlength="14"></div>
+                    <div class="form-group"><label class="form-label">E-mail</label><input type="email" id="input-email" class="form-control" placeholder="seu@email.com"></div>
+                    <div class="form-group" style="margin-bottom: 0;"><label class="form-label">Telefone</label><input type="tel" id="input-tel" class="form-control" placeholder="(00) 00000-0000" maxlength="15"></div>
+                    <button class="btn-white" id="btn-salvar-perfil" style="background: var(--primary-blue); color: white; width: auto; padding: 10px 20px; margin-top: 20px;">Salvar Alterações</button>
+                </div>
+
+                <div class="card" style="max-width: 800px;">
+                    <h3 style="margin-bottom: 20px; font-size: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                        <i class="fa-regular fa-address-card" style="color: var(--primary-blue); margin-right: 8px;"></i> Dados do Convênio
+                    </h3>
+                    <div class="form-group">
+                        <label class="form-label">Nome do Convênio</label>
+                        <input type="text" class="form-control" value="OdontoPrev Premium" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Número da Carteirinha</label>
+                        <input type="text" class="form-control" value="9876543210001" disabled>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Validade</label>
+                            <input type="text" class="form-control" value="12/2026" disabled>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Status</label>
+                            <input type="text" class="form-control" value="Ativo" style="color: var(--success); font-weight: 600;" disabled>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="appointment-modal">
+        <div class="modal-box">
+            <button class="close-modal" id="close-details-btn">&times;</button>
+            <h3 style="margin-bottom: 20px; color: var(--primary-blue); font-size: 20px;">Detalhes do Procedimento</h3>
+            
+            <div style="display: flex; flex-direction: column; gap: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                <div>
+                    <span style="font-size: 13px; color: var(--text-muted); display:block; margin-bottom: 4px;">Procedimento Principal</span>
+                    <strong style="font-size: 16px;" id="modal-appt-title">--</strong>
+                </div>
+                <div>
+                    <span style="font-size: 13px; color: var(--text-muted); display:block; margin-bottom: 4px;">Profissional Responsável</span>
+                    <strong id="modal-appt-prof">--</strong>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <span style="font-size: 13px; color: var(--text-muted); display:block; margin-bottom: 4px;">Data</span>
+                        <strong id="modal-appt-date">--</strong>
+                    </div>
+                    <div>
+                        <span style="font-size: 13px; color: var(--text-muted); display:block; margin-bottom: 4px;">Horário / Status</span>
+                        <strong id="modal-appt-time">--</strong>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid var(--primary-blue); margin-top: 8px;">
+                    <span style="font-size: 12px; color: var(--text-muted); display:block; margin-bottom: 6px;">Endereço da Clínica</span>
+                    <strong style="font-size: 13px; color: var(--text-dark);">
+                        <i class="fa-solid fa-location-dot" style="color: var(--primary-blue); margin-right: 6px;"></i> 
+                        Avenida Sousa Bandeira, 258, São Paulo - SP, 03559-000
+                    </strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="success-modal">
+        <div class="modal-box" style="text-align: center; padding: 40px;">
+            <div style="width: 60px; height: 60px; background: var(--success-bg); color: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 20px;"><i class="fa-solid fa-check"></i></div>
+            <h2 style="margin-bottom: 10px;">Sucesso!</h2>
+            <p style="color: var(--text-muted); margin-bottom: 24px;" id="success-msg">Operação realizada com sucesso.</p>
+            <button class="btn-confirm" id="btn-fechar-sucesso" style="display: block; width: auto; margin: 0 auto; padding: 12px 30px;">Fechar</button>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================
+           1. RESPONSIVIDADE E SPA
+        ========================================= */
+        const sidebar = document.getElementById('sidebar'), mobileOverlay = document.getElementById('mobile-overlay');
+        function toggleMenu() { sidebar.classList.toggle('open'); mobileOverlay.classList.toggle('active'); }
+        document.getElementById('open-sidebar').addEventListener('click', toggleMenu);
+        document.getElementById('close-sidebar').addEventListener('click', toggleMenu);
+        mobileOverlay.addEventListener('click', toggleMenu);
+        
+        const navButtons = document.querySelectorAll('.nav-btn'), sections = document.querySelectorAll('.page-section');
+        function switchTab(targetId) {
+            navButtons.forEach(btn => btn.classList.remove('active')); sections.forEach(sec => sec.classList.remove('active'));
+            document.querySelector(`[data-target="${targetId}"]`).classList.add('active'); document.getElementById(targetId).classList.add('active');
+            if(window.innerWidth <= 768 && sidebar.classList.contains('open')) toggleMenu();
+        }
+        navButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn.getAttribute('data-target'))));
+        document.getElementById('view-all-treatments').addEventListener('click', (e) => { e.preventDefault(); switchTab('tratamentos'); });
+        document.getElementById('btn-quick-schedule').addEventListener('click', () => switchTab('agendar'));
+
+        /* =========================================
+           2. MÁSCARAS DE FORMULÁRIO (CPF E TEL)
+        ========================================= */
+        const inputCpf = document.getElementById('input-cpf'), inputTel = document.getElementById('input-tel');
+        inputCpf.addEventListener('input', e => {
+            let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,3})(\d{0,2})/);
+            e.target.value = !x[2] ? x[1] : x[1] + '.' + x[2] + (x[3] ? '.' : '') + x[3] + (x[4] ? '-' + x[4] : '');
+        });
+        inputTel.addEventListener('input', e => {
+            let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+            e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+        });
+
+        /* =========================================
+           3. LOCALSTORAGE: PERFIL
+        ========================================= */
+        const inputNome = document.getElementById('input-nome'), inputEmail = document.getElementById('input-email');
+        function syncProfileUI() {
+            const nome = inputNome.value.trim();
+            document.getElementById('sidebar-nome').textContent = nome || "Paciente";
+            document.querySelector('.patient-first-name').textContent = nome ? nome.split(' ')[0] : "Paciente";
+            document.getElementById('sidebar-avatar').textContent = nome ? (nome.split(' ')[0][0] + (nome.split(' ')[1] ? nome.split(' ')[1][0] : '')).toUpperCase() : "PA";
+            document.getElementById('sidebar-email').textContent = inputEmail.value.trim() || "email@exemplo.com";
+        }
+
+        if(localStorage.getItem('dc_nome')) inputNome.value = localStorage.getItem('dc_nome'); else inputNome.value = "João Pedro Silva";
+        if(localStorage.getItem('dc_email')) inputEmail.value = localStorage.getItem('dc_email'); else inputEmail.value = "joao@email.com";
+        if(localStorage.getItem('dc_cpf')) inputCpf.value = localStorage.getItem('dc_cpf');
+        if(localStorage.getItem('dc_tel')) inputTel.value = localStorage.getItem('dc_tel');
+        syncProfileUI();
+
+        document.getElementById('btn-salvar-perfil').addEventListener('click', () => {
+            localStorage.setItem('dc_nome', inputNome.value); localStorage.setItem('dc_email', inputEmail.value);
+            localStorage.setItem('dc_cpf', inputCpf.value); localStorage.setItem('dc_tel', inputTel.value);
+            syncProfileUI();
+            document.getElementById('success-msg').innerText = "Seus dados foram atualizados com sucesso!";
+            document.getElementById('success-modal').style.display = 'flex';
+        });
+
+        /* =========================================
+           4. LOCALSTORAGE: DADOS DE HISTÓRICO & CANCELAMENTO
+        ========================================= */
+        const tratamentosFixos = [
+            { titulo: "Limpeza Dental Profunda", prof: "Dr. Carlos Mendes", data: "15/04/2026", status: "Concluído" },
+            { titulo: "Aplicação de Flúor", prof: "Dr. Carlos Mendes", data: "15/04/2026", status: "Concluído" },
+            { titulo: "Restauração em Resina", prof: "Dra. Ana Costa", data: "02/03/2026", status: "Concluído" }
+        ];
+
+        function renderTreatments() {
+            const recentList = document.getElementById('recent-treatments-list');
+            const fullHistoryList = document.getElementById('full-history-list');
+            recentList.innerHTML = ''; fullHistoryList.innerHTML = '';
+
+            const novosAgendamentos = JSON.parse(localStorage.getItem('dc_appts')) || [];
+            
+            // Renderiza agendamentos ativos (vindos do LocalStorage)
+            novosAgendamentos.forEach((trat, index) => {
+                const htmlStr = `
+                    <div class="treatment-item active-treatment-row">
+                        <div class="treatment-icon pending"><i class="fa-regular fa-clock"></i></div>
+                        <div style="flex-grow: 1; min-width: 0;">
+                            <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="hist-title">${trat.titulo}</div>
+                            <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                                <i class="fa-regular fa-calendar"></i> <span class="hist-date">${trat.data}</span> &nbsp;
+                                <i class="fa-regular fa-user"></i> <span class="hist-prof">${trat.prof}</span>
+                            </div>
+                        </div>
+                        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+                            <span class="badge primary" style="margin-bottom: 8px;">Agendado</span>
+                            <div style="display: flex;">
+                                <button class="btn-cancel-sm" onclick="cancelAppointment(${index})">Cancelar</button>
+                                <button class="btn-detail-sm history-btn" onclick="openDetailModal('${trat.titulo}', '${trat.prof}', '${trat.data}', '${trat.hora}')">Ver Detalhes</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                if (index < 3) recentList.innerHTML += htmlStr;
+                fullHistoryList.innerHTML += htmlStr;
+            });
+
+            // Renderiza histórico fixo (concluídos)
+            tratamentosFixos.forEach((trat, fixedIndex) => {
+                const totalIndex = novosAgendamentos.length + fixedIndex;
+                const htmlStr = `
+                    <div class="treatment-item history-row">
+                        <div class="treatment-icon"><i class="fa-solid fa-check"></i></div>
+                        <div style="flex-grow: 1; min-width: 0;">
+                            <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="hist-title">${trat.titulo}</div>
+                            <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                                <i class="fa-regular fa-calendar"></i> <span class="hist-date">${trat.data}</span> &nbsp;
+                                <i class="fa-regular fa-user"></i> <span class="hist-prof">${trat.prof}</span>
+                            </div>
+                        </div>
+                        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+                            <span class="badge success" style="margin-bottom: 8px;">Concluído</span>
+                            <button class="btn-detail-sm history-btn" onclick="openDetailModal('${trat.titulo}', '${trat.prof}', '${trat.data}', 'Procedimento Finalizado')">Ver Detalhes</button>
+                        </div>
+                    </div>
+                `;
+                if (totalIndex < 3) recentList.innerHTML += htmlStr;
+                fullHistoryList.innerHTML += htmlStr;
+            });
+
+            updateDashboardStats();
+            renderNextApptCard();
+        }
+
+        function updateDashboardStats() {
+            const numConsultas = document.querySelectorAll('#full-history-list .history-row').length;
+            const numAtivos = document.querySelectorAll('#full-history-list .active-treatment-row').length;
+            document.getElementById('stat-consultas').innerText = numConsultas;
+            document.getElementById('stat-ativos').innerText = numAtivos;
+        }
+
+        function renderNextApptCard() {
+            const nextAppt = JSON.parse(localStorage.getItem('dc_next_appt'));
+            if(nextAppt) {
+                document.getElementById('no-appt-msg').style.display = 'none';
+                document.getElementById('appt-details').style.display = 'block';
+                document.getElementById('next-appt-date').innerText = nextAppt.dataLonga;
+                document.getElementById('next-appt-time').innerText = nextAppt.hora;
+                document.getElementById('next-appt-prof').innerText = nextAppt.prof;
+                document.getElementById('open-details-btn').onclick = () => { openDetailModal(nextAppt.titulo, nextAppt.prof, nextAppt.dataLonga, nextAppt.hora); };
+            } else {
+                document.getElementById('no-appt-msg').style.display = 'block';
+                document.getElementById('appt-details').style.display = 'none';
+            }
+        }
+
+        // Função global de Cancelar Agendamento
+        window.cancelAppointment = function(index) {
+            if(confirm("Deseja realmente cancelar este agendamento?")) {
+                let appts = JSON.parse(localStorage.getItem('dc_appts')) || [];
+                appts.splice(index, 1); // Remove da lista
+                localStorage.setItem('dc_appts', JSON.stringify(appts));
+                
+                // Define o próximo agendamento ativo como o primeiro da fila (se existir)
+                if(appts.length > 0) {
+                    localStorage.setItem('dc_next_appt', JSON.stringify(appts[0]));
+                } else {
+                    localStorage.removeItem('dc_next_appt');
+                }
+                renderTreatments(); // Recarrega os blocos
+            }
+        };
+
+        renderTreatments();
+
+        /* =========================================
+           5. LÓGICA DO MODAL DE DETALHES
+        ========================================= */
+        const modal = document.getElementById('appointment-modal');
+        document.getElementById('close-details-btn').addEventListener('click', () => modal.style.display = 'none');
+        window.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+        function openDetailModal(title, prof, date, time) {
+            document.getElementById('modal-appt-title').innerText = title;
+            document.getElementById('modal-appt-prof').innerText = prof;
+            document.getElementById('modal-appt-date').innerText = date;
+            document.getElementById('modal-appt-time').innerText = time;
+            modal.style.display = 'flex';
+        }
+
+        /* =========================================
+           6. LÓGICA DE AGENDAMENTO E NOTIFICAÇÃO
+        ========================================= */
+        const dentistas = {
+            "Limpeza e Prevenção": [{ id: 'ms', nome: 'Dra. Maria Silva', esp: 'Limpeza e Prevenção' }, { id: 'cm', nome: 'Dr. Carlos Mendes', esp: 'Limpeza e Prevenção' }],
+            "Clareamento Dental": [{ id: 'ac', nome: 'Dra. Ana Costa', esp: 'Clareamento Dental' }, { id: 'ms', nome: 'Dra. Maria Silva', esp: 'Clareamento Dental' }],
+            "Avaliação Ortodôntica": [{ id: 'rl', nome: 'Dr. Roberto Lima', esp: 'Ortodontia' }]
+        };
+
+        const selectTreatment = document.getElementById('select-treatment'), step2 = document.getElementById('step-2'), step3 = document.getElementById('step-3'), step4 = document.getElementById('step-4');
+        const dentistContainer = document.getElementById('dentist-list-container'), btnConfirmar = document.getElementById('btn-confirmar');
+
+        selectTreatment.addEventListener('change', function() {
+            dentistContainer.innerHTML = '';
+            dentistas[this.value].forEach(prof => {
+                const sigla = prof.nome.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+                dentistContainer.innerHTML += `<div class="prof-card" data-nome="${prof.nome}"><div class="prof-avatar">${sigla}</div><div><div style="font-weight: 600;">${prof.nome}</div><div style="font-size: 13px; color: var(--text-muted);">${prof.esp}</div></div></div>`;
+            });
+            step2.classList.remove('step-locked'); step3.classList.add('step-locked'); step4.classList.add('step-locked'); btnConfirmar.style.display = 'none';
+
+            document.querySelectorAll('.prof-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('.prof-card').forEach(c => c.classList.remove('active')); this.classList.add('active');
+                    step3.classList.remove('step-locked'); step4.classList.add('step-locked'); btnConfirmar.style.display = 'none';
+                    document.querySelectorAll('.calendar-day.number').forEach(d => d.classList.remove('active'));
+                });
+            });
+        });
+
+        document.querySelectorAll('.calendar-day.number').forEach(dia => {
+            dia.addEventListener('click', function() {
+                document.querySelectorAll('.calendar-day.number').forEach(d => d.classList.remove('active')); this.classList.add('active');
+                step4.classList.remove('step-locked'); btnConfirmar.style.display = 'none';
+                document.querySelectorAll('.time-btn').forEach(t => t.classList.remove('active'));
+            });
+        });
+
+        document.querySelectorAll('.time-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active')); this.classList.add('active');
+                btnConfirmar.style.display = 'block';
+            });
+        });
+
+        // NOTIFICAÇÕES E DUPLA CONFIRMAÇÃO
+        const bellIcon = document.getElementById('notification-bell'), notifDropdown = document.getElementById('notification-dropdown');
+        const notifBadge = document.getElementById('notification-badge'), notifBody = document.getElementById('notification-body');
+
+        bellIcon.addEventListener('click', () => {
+            if (notifDropdown.style.display === 'block') { notifDropdown.style.display = 'none'; } 
+            else { notifDropdown.style.display = 'block'; notifBadge.style.display = 'none'; }
+        });
+        window.addEventListener('click', (e) => {
+            if (!document.getElementById('bell-container').contains(e.target) && !notifDropdown.contains(e.target)) { notifDropdown.style.display = 'none'; }
+        });
+
+        window.confirmarPresenca = function(btn) { 
+            btn.parentElement.innerHTML = '<span style="color: var(--success); font-weight: 500; font-size: 13px;"><i class="fa-solid fa-check"></i> Presença Confirmada! Te esperamos lá.</span>'; 
+        };
+        
+        window.cancelarPresenca = function(btn) { 
+            // Mostra a segunda pergunta na notificação
+            btn.parentElement.parentElement.innerHTML = `
+                <strong style="display: block; margin-bottom: 8px; color: var(--text-dark);">Então deseja cancelar o agendamento?</strong>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="confirmarCancelamentoNotificacao(this)" style="flex: 1; padding: 8px; border: none; background: #dc3545; color: white; border-radius: 6px; cursor: pointer; font-weight: 500;">Sim</button>
+                    <button onclick="manterAgendamento(this)" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); background: white; color: var(--text-dark); border-radius: 6px; cursor: pointer; font-weight: 500;">Não</button>
+                </div>
+            `;
+        };
+
+        window.confirmarCancelamentoNotificacao = function(btn) {
+            // Cancela o último agendamento feito (que gerou a notificação de amanhã)
+            let appts = JSON.parse(localStorage.getItem('dc_appts')) || [];
+            if(appts.length > 0) {
+                appts.shift(); // Remove o primeiro da fila
+                localStorage.setItem('dc_appts', JSON.stringify(appts));
+            }
+            if(appts.length > 0) { localStorage.setItem('dc_next_appt', JSON.stringify(appts[0])); } 
+            else { localStorage.removeItem('dc_next_appt'); }
+            
+            renderTreatments();
+            btn.parentElement.parentElement.innerHTML = '<span style="color: #dc3545; font-weight: 500; font-size: 13px;"><i class="fa-solid fa-xmark"></i> Agendamento cancelado com sucesso.</span>';
+        };
+
+        window.manterAgendamento = function(btn) {
+            btn.parentElement.parentElement.innerHTML = '<span style="color: var(--text-muted); font-weight: 500; font-size: 13px;">Agendamento mantido.</span>';
+        };
+
+        const successModal = document.getElementById('success-modal');
+        btnConfirmar.addEventListener('click', () => {
+            const trt = selectTreatment.value;
+            const prf = document.querySelector('.prof-card.active').getAttribute('data-nome');
+            const dia = document.querySelector('.calendar-day.active').innerText;
+            const hr = document.querySelector('.time-btn.active').innerText;
+            
+            const dataCurta = `${dia.padStart(2, '0')}/06/2026`;
+            const dataLonga = `Dia ${dia} de Junho de 2026`;
+
+            // SALVA NO LOCALSTORAGE
+            const novoAgendamento = { titulo: trt, prof: prf, data: dataCurta, hora: hr, dataLonga: dataLonga, status: "Agendado" };
+            const apptsAntigos = JSON.parse(localStorage.getItem('dc_appts')) || [];
+            apptsAntigos.unshift(novoAgendamento); 
+            localStorage.setItem('dc_appts', JSON.stringify(apptsAntigos));
+            localStorage.setItem('dc_next_appt', JSON.stringify(novoAgendamento));
+
+            renderTreatments();
+
+            // NOTIFICAÇÃO
+            notifBadge.style.display = 'block'; 
+            if (dia === '9') {
+                notifBody.innerHTML = `
+                    <div style="text-align: left;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                            <div style="width: 32px; height: 32px; background: #e7f1ff; color: var(--primary-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-calendar-day"></i></div>
+                            <div>
+                                <strong style="display: block; color: var(--text-dark); font-size: 14px;">Lembrete de Consulta</strong>
+                                <span style="font-size: 11px; color: var(--text-muted);">Agora mesmo</span>
+                            </div>
+                        </div>
+                        <p style="margin-bottom: 12px; color: var(--text-dark);">Você tem um agendamento <strong>amanhã (${dataCurta}) às ${hr}</strong> com ${prf}.</p>
+                        <strong style="display: block; margin-bottom: 8px; color: var(--text-dark);">Confirma sua presença?</strong>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="confirmarPresenca(this)" style="flex: 1; padding: 8px; border: none; background: var(--success); color: white; border-radius: 6px; cursor: pointer; font-weight: 500; transition: 0.2s;">Sim</button>
+                            <button onclick="cancelarPresenca(this)" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); background: white; color: var(--text-dark); border-radius: 6px; cursor: pointer; font-weight: 500; transition: 0.2s;">Não</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                notifBody.innerHTML = `
+                    <div style="text-align: left;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                            <div style="width: 32px; height: 32px; background: var(--success-bg); color: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-check"></i></div>
+                            <div>
+                                <strong style="display: block; color: var(--text-dark); font-size: 14px;">Novo Agendamento</strong>
+                                <span style="font-size: 11px; color: var(--text-muted);">Agora mesmo</span>
+                            </div>
+                        </div>
+                        <p style="color: var(--text-dark);">Sua consulta de <strong>${trt}</strong> foi marcada com sucesso para o dia ${dataCurta} às ${hr}.</p>
+                    </div>
+                `;
+            }
+
+            document.getElementById('success-msg').innerText = "Seu horário foi reservado com sucesso no sistema.";
+            document.getElementById('success-modal').style.display = 'flex';
+            document.getElementById('btn-fechar-sucesso').onclick = () => {
+                document.getElementById('success-modal').style.display = 'none';
+                selectTreatment.value = ''; step2.classList.add('step-locked'); step3.classList.add('step-locked'); step4.classList.add('step-locked'); btnConfirmar.style.display = 'none';
+                dentistContainer.innerHTML = '<p style="font-size: 13px; color: var(--text-muted);">Selecione o atendimento primeiro.</p>';
+                switchTab('inicio');
+            };
+        });
+    </script>
+</body>
+</html>
